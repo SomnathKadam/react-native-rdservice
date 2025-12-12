@@ -19,7 +19,9 @@ buildscript {
 apply plugin: "com.android.library"
 apply plugin: "kotlin-android"
 
-apply plugin: "com.facebook.react"
+if (project.parent != null) {
+  apply plugin: "com.facebook.react"
+}
 
 def getExtOrIntegerDefault(name) {
   return rootProject.ext.has(name) ? rootProject.ext.get(name) : (project.properties["Rdservice_" + name]).toInteger()
@@ -72,6 +74,6 @@ repositories {
 def kotlin_version = getExtOrDefault("kotlinVersion")
 
 dependencies {
-  implementation "com.facebook.react:react-android"
+  implementation 'com.facebook.react:react-android:0.83.0'
   implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
 }

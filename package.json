@@ -1,7 +1,7 @@
 {
   "name": "react-native-rdservice",
   "version": "0.1.0",
-  "description": "rdservice for bio and face",
+  "description": "Reading Finger print and Face data using RD services in Android",
   "main": "./lib/module/index.js",
   "types": "./lib/typescript/src/index.d.ts",
   "exports": {
@@ -42,8 +42,18 @@
   },
   "keywords": [
     "react-native",
-    "ios",
-    "android"
+    "android",
+    "biometric",
+    "fingerprint",
+    "face-recognition",
+    "rd-service",
+    "uidai",
+    "aadhaar",
+    "ekyc",
+    "biometric-authentication",
+    "mantra",
+    "morpho",
+    "registered-device"
   ],
   "repository": {
     "type": "git",
