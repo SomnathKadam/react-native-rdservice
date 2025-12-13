@@ -1,6 +1,6 @@
 {
   "name": "react-native-rdservice",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Reading Finger print and Face data using RD services in Android",
   "main": "./lib/module/index.js",
   "types": "./lib/typescript/src/index.d.ts",

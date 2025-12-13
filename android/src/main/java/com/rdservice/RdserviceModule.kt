@@ -28,7 +28,7 @@ class RdserviceModule(reactContext: ReactApplicationContext) :
   private var promise: Promise? = null
 
   private val activityEventListener: ActivityEventListener = object : BaseActivityEventListener() {
-    override fun onActivityResult(activity: Activity?, requestCode: Int, resultCode: Int, data: Intent?) {
+    override fun onActivityResult(activity: Activity, requestCode: Int, resultCode: Int, data: Intent?) {
       if (data == null) {
         resolve(FAILURE, "No action taken")
         return
