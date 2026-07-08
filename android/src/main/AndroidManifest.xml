@@ -1,2 +1,21 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <!--
+    Android 11+ package visibility: without these entries the host app cannot
+    see or launch the RD service apps installed on the device. Merged into the
+    consumer app's manifest automatically.
+  -->
+  <queries>
+    <intent>
+      <action android:name="in.gov.uidai.rdservice.fp.INFO" />
+    </intent>
+    <intent>
+      <action android:name="in.gov.uidai.rdservice.fp.CAPTURE" />
+    </intent>
+    <intent>
+      <action android:name="in.gov.uidai.rdservice.iris.CAPTURE" />
+    </intent>
+    <intent>
+      <action android:name="in.gov.uidai.rdservice.face.CAPTURE" />
+    </intent>
+  </queries>
 </manifest>

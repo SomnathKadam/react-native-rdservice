@@ -74,6 +74,8 @@ repositories {
 def kotlin_version = getExtOrDefault("kotlinVersion")
 
 dependencies {
-  implementation 'com.facebook.react:react-android:0.83.0'
+  // Version is resolved by the consumer app's React Native Gradle plugin, so the
+  // library works with any React Native version (0.80+) instead of pinning one.
+  implementation "com.facebook.react:react-android"
   implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
 }

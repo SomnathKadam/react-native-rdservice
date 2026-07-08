@@ -1,58 +1,112 @@
 # react-native-rdservice
 
-A React Native library for capturing biometric data (fingerprint and face) using RD (Registered Device) services on Android. This library integrates with UIDAI-compliant biometric devices for Aadhaar-based authentication and eKYC services.
+A React Native library for capturing **fingerprint**, **iris**, and **face** biometric data using UIDAI-compliant RD (Registered Device) services on Android. Built for Aadhaar-based authentication and eKYC workflows.
+
+[![npm version](https://img.shields.io/npm/v/react-native-rdservice.svg)](https://www.npmjs.com/package/react-native-rdservice)
+[![license](https://img.shields.io/npm/l/react-native-rdservice.svg)](LICENSE)
+
+## Features
+
+- 🫆 Fingerprint capture via RD services (Mantra, Morpho, Startek, Precision, SecuGen, …)
+- 👁️ Iris capture via iris RD services
+- 🙂 Face capture via UIDAI Face RD
+- ℹ️ Device readiness check (`getDeviceInfo`)
+- Custom `PidOptions` XML support with sensible defaults
+- Promise-based API with full TypeScript definitions
+- New Architecture (TurboModule) — works with React Native 0.80+
+- Android 11+ package visibility (`<queries>`) handled automatically — no manifest changes needed in your app
+
+## Platform support
+
+| Platform | Supported | Notes |
+|----------|-----------|-------|
+| Android  | ✅ | Requires an RD service app installed on the device |
+| iOS      | ⚠️ Graceful stub | UIDAI certifies RD services for **Android and Windows only**. There are no iOS RD service apps, so real capture is impossible on iOS. The module still loads on iOS and every method resolves with `{ status: 'FAILURE', message: '…not available on iOS…' }`, so cross-platform apps can share one code path without crashing. |
+
+## Requirements
+
+- React Native **0.80 or higher** with the New Architecture enabled (default since RN 0.76)
+- Android SDK 24+
+- The relevant RD service app installed on the device (see [package names](#common-rd-service-package-names))
 
 ## Installation
 
 ```sh
 npm install react-native-rdservice
-```
-
-or
-
-```sh
+# or
 yarn add react-native-rdservice
 ```
 
-## Features
+No extra Android setup is required. The library ships the required `<queries>` entries for Android 11+ package visibility; they are merged into your app's manifest automatically.
 
-- Fingerprint biometric capture using RD services
-- Face biometric capture using RD services
-- Support for custom PID options
-- TypeScript support with full type definitions
-- Promise-based API for easy async/await usage
-
-## API Reference
-
-### Types
-
-#### `RdServiceResponse`
-
-Response object returned by both fingerprint and face capture methods.
+## Quick start
 
 ```typescript
-interface RdServiceResponse {
-  status: string;    // "SUCCESS" or "FAILURE"
-  message: string;   // XML data on success, error message on failure
+import { getFingerPrint } from 'react-native-rdservice';
+
+const result = await getFingerPrint('com.mantra.rdservice');
+
+if (result.status === 'SUCCESS') {
+  // result.message is the signed PidData XML — send it to your backend as-is
+} else {
+  console.warn(result.message); // e.g. "Device not ready"
 }
 ```
 
-### Methods
+## API Reference
+
+All methods return `Promise<RdServiceResponse>`:
+
+```typescript
+interface RdServiceResponse {
+  status: string;  // 'SUCCESS' | 'FAILURE'
+  message: string; // signed XML on success, human-readable error on failure
+}
+```
+
+`deviceName` is always the **package name of the RD service app** installed on the device. `pidOption` is an optional `PidOptions` XML string — when omitted (or blank), a sensible default is used.
 
 ---
 
-#### `getFingerPrint(deviceName, pidOption)`
+### `getDeviceInfo(deviceName)`
 
-Captures fingerprint biometric data using the specified RD service device.
+Checks whether the RD service and its device are ready (RD `INFO` call).
 
-**Parameters:**
+```typescript
+import { getDeviceInfo } from 'react-native-rdservice';
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `deviceName` | `string` | Yes | Package name of the RD service app (e.g., `"com.mantra.rdservice"`, `"com.precision.pb510.rdservice"`) |
-| `pidOption` | `string` | No | XML string containing PID options. If empty or less than 10 characters, uses default configuration |
+const info = await getDeviceInfo('com.mantra.rdservice');
+if (info.status === 'SUCCESS') {
+  // info.message contains the RDService info XML (device status, dpId, rdsId, …)
+}
+```
 
-**Default PID Options:**
+---
+
+### `getFingerPrint(deviceName, pidOption?)`
+
+Captures fingerprint biometric data.
+
+```typescript
+import { getFingerPrint } from 'react-native-rdservice';
+
+// Default options: single finger (fCount="1"), FMR format, 10s timeout, production env
+const result = await getFingerPrint('com.mantra.rdservice');
+
+// Custom PidOptions
+const custom = await getFingerPrint(
+  'com.precision.pb510.rdservice',
+  `<?xml version="1.0"?>
+   <PidOptions ver="1.0">
+     <Opts fCount="2" fType="2" iCount="0" pCount="0" format="0"
+           pidVer="2.0" timeout="15000" posh="UNKNOWN" env="P" />
+     <CustOpts><Param name="txnId" value="12345"/></CustOpts>
+   </PidOptions>`
+);
+```
+
+Default `PidOptions`:
+
 ```xml
 <?xml version="1.0"?>
 <PidOptions ver="1.0">
@@ -62,80 +116,48 @@ Captures fingerprint biometric data using the specified RD service device.
 </PidOptions>
 ```
 
-**Returns:** `Promise<RdServiceResponse>`
+---
 
-**Success Response:**
+### `getIrisCapture(deviceName, pidOption?)`
+
+Captures iris biometric data.
+
 ```typescript
-{
-  status: "SUCCESS",
-  message: "<?xml version='1.0'?><PidData>...</PidData>" // Biometric XML data
+import { getIrisCapture } from 'react-native-rdservice';
+
+// Default options: single iris (iCount="1"), 10s timeout, production env
+const result = await getIrisCapture('com.mantra.mis100v2.rdservice');
+
+if (result.status === 'SUCCESS') {
+  // result.message contains the signed PidData XML with iris data
 }
 ```
 
-**Error Response:**
-```typescript
-{
-  status: "FAILURE",
-  message: "Device not ready" | "Selected device not found" | "RD services not available"
-}
-```
+Default `PidOptions`:
 
-**Example:**
-
-```typescript
-import { getFingerPrint } from 'react-native-rdservice';
-
-// Using default PID options
-const captureFingerprint = async () => {
-  try {
-    const result = await getFingerPrint('com.mantra.rdservice', '');
-
-    if (result.status === 'SUCCESS') {
-      console.log('Fingerprint captured:', result.message);
-      // Process the biometric XML data
-      // result.message contains the PID XML with biometric information
-    } else {
-      console.error('Capture failed:', result.message);
-    }
-  } catch (error) {
-    console.error('Error:', error);
-  }
-};
-
-// Using custom PID options
-const captureFingerprintCustom = async () => {
-  const customPidOptions = `<?xml version="1.0"?>
-    <PidOptions ver="1.0">
-      <Opts fCount="2" fType="2" iCount="0" pCount="0" format="0"
-            pidVer="2.0" timeout="15000" posh="UNKNOWN" env="P" />
-      <CustOpts>
-        <Param name="txnId" value="12345"/>
-      </CustOpts>
-    </PidOptions>`;
-
-  const result = await getFingerPrint('com.precision.pb510.rdservice', customPidOptions);
-
-  if (result.status === 'SUCCESS') {
-    // Handle success
-    console.log('Biometric data:', result.message);
-  }
-};
+```xml
+<?xml version="1.0"?>
+<PidOptions ver="1.0">
+  <Opts fCount="0" fType="0" iCount="1" iType="0" pCount="0" pType="0"
+        format="0" pidVer="2.0" timeout="10000" posh="UNKNOWN" env="P" />
+  <CustOpts></CustOpts>
+</PidOptions>
 ```
 
 ---
 
-#### `getFaceCapture(deviceName, pidOption)`
+### `getFaceCapture(deviceName, pidOption?)`
 
-Captures face biometric data using the specified RD service device.
+Captures face biometric data via the UIDAI Face RD app.
 
-**Parameters:**
+```typescript
+import { getFaceCapture } from 'react-native-rdservice';
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `deviceName` | `string` | Yes | Package name of the face RD service app (e.g., `"in.gov.uidai.facerd"`) |
-| `pidOption` | `string` | No | XML string containing PID options for face capture. If empty or less than 10 characters, uses default configuration |
+const result = await getFaceCapture('in.gov.uidai.facerd');
+```
 
-**Default PID Options:**
+The default `PidOptions` targets **face authentication** and uses the UIDAI-published `wadh` constant for that flow. For eKYC or other purposes, pass your own `PidOptions` with the appropriate `wadh` and `purpose`:
+
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <PidOptions ver="1.0" env="P">
@@ -150,170 +172,129 @@ Captures face biometric data using the specified RD service device.
 </PidOptions>
 ```
 
-**Returns:** `Promise<RdServiceResponse>`
-
-**Success Response:**
-```typescript
-{
-  status: "SUCCESS",
-  message: "<?xml version='1.0'?><PidData>...</PidData>" // Face biometric XML data
-}
-```
-
-**Error Response:**
-```typescript
-{
-  status: "FAILURE",
-  message: "Device not ready" | "Selected device not found" | "Face RD services not available"
-}
-```
-
-**Example:**
-
-```typescript
-import { getFaceCapture } from 'react-native-rdservice';
-
-// Using default PID options
-const captureFace = async () => {
-  try {
-    const result = await getFaceCapture('in.gov.uidai.facerd', '');
-
-    if (result.status === 'SUCCESS') {
-      console.log('Face captured:', result.message);
-      // Process the face biometric XML data
-      // result.message contains the PID XML with face biometric information
-    } else {
-      console.error('Capture failed:', result.message);
-    }
-  } catch (error) {
-    console.error('Error:', error);
-  }
-};
-
-// Using custom PID options
-const captureFaceCustom = async () => {
-  const customPidOptions = `<?xml version="1.0" encoding="UTF-8"?>
-    <PidOptions ver="1.0" env="P">
-      <Opts fCount="" fType="" iCount="" iType="" pCount="" pType=""
-            format="" pidVer="2.0" timeout="20000" otp=""
-            wadh="your_wadh_value_here" posh="" />
-      <CustOpts>
-        <Param name="txnId" value="customTxnId123"/>
-        <Param name="purpose" value="ekyc"/>
-        <Param name="language" value="en"/>
-      </CustOpts>
-    </PidOptions>`;
-
-  const result = await getFaceCapture('in.gov.uidai.facerd', customPidOptions);
-
-  if (result.status === 'SUCCESS') {
-    // Handle success
-    console.log('Face biometric data:', result.message);
-  }
-};
-```
-
 ---
 
-## Complete Usage Example
+## Complete usage example
 
 ```typescript
 import React, { useState } from 'react';
-import { View, Button, Text, Alert } from 'react-native';
-import { getFingerPrint, getFaceCapture, type RdServiceResponse } from 'react-native-rdservice';
+import { View, Button, Alert } from 'react-native';
+import {
+  getDeviceInfo,
+  getFingerPrint,
+  getIrisCapture,
+  getFaceCapture,
+  type RdServiceResponse,
+} from 'react-native-rdservice';
 
-const BiometricCapture = () => {
-  const [fpData, setFpData] = useState<string>('');
-  const [faceData, setFaceData] = useState<string>('');
+export default function BiometricCapture() {
+  const [busy, setBusy] = useState(false);
 
-  const handleFingerprintCapture = async () => {
+  const capture = async (fn: () => Promise<RdServiceResponse>) => {
+    setBusy(true);
     try {
-      const result: RdServiceResponse = await getFingerPrint(
-        'com.mantra.rdservice',
-        ''
-      );
-
+      const result = await fn();
       if (result.status === 'SUCCESS') {
-        setFpData(result.message);
-        Alert.alert('Success', 'Fingerprint captured successfully');
+        // Forward result.message (signed PID XML) to your backend over TLS.
+        Alert.alert('Success', 'Biometric captured');
       } else {
-        Alert.alert('Error', result.message);
+        Alert.alert('Failed', result.message);
       }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to capture fingerprint');
-      console.error(error);
-    }
-  };
-
-  const handleFaceCapture = async () => {
-    try {
-      const result: RdServiceResponse = await getFaceCapture(
-        'in.gov.uidai.facerd',
-        ''
-      );
-
-      if (result.status === 'SUCCESS') {
-        setFaceData(result.message);
-        Alert.alert('Success', 'Face captured successfully');
-      } else {
-        Alert.alert('Error', result.message);
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to capture face');
-      console.error(error);
+    } finally {
+      setBusy(false);
     }
   };
 
   return (
     <View>
-      <Button title="Capture Fingerprint" onPress={handleFingerprintCapture} />
-      <Button title="Capture Face" onPress={handleFaceCapture} />
-
-      {fpData ? <Text>Fingerprint Data: {fpData.substring(0, 100)}...</Text> : null}
-      {faceData ? <Text>Face Data: {faceData.substring(0, 100)}...</Text> : null}
+      <Button
+        title="Check Device"
+        disabled={busy}
+        onPress={() => capture(() => getDeviceInfo('com.mantra.rdservice'))}
+      />
+      <Button
+        title="Fingerprint"
+        disabled={busy}
+        onPress={() => capture(() => getFingerPrint('com.mantra.rdservice'))}
+      />
+      <Button
+        title="Iris"
+        disabled={busy}
+        onPress={() => capture(() => getIrisCapture('com.mantra.mis100v2.rdservice'))}
+      />
+      <Button
+        title="Face"
+        disabled={busy}
+        onPress={() => capture(() => getFaceCapture('in.gov.uidai.facerd'))}
+      />
     </View>
   );
-};
-
-export default BiometricCapture;
+}
 ```
 
-## Common RD Service Package Names
+## Common RD service package names
 
-**Fingerprint Devices:**
-- Mantra: `com.mantra.rdservice`
-- Morpho: `com.scl.rdservice`
-- Precision: `com.precision.pb510.rdservice`
-- Startek: `com.acpl.registersdk`
-- Secugen: `com.secugen.rdservice`
+**Fingerprint:**
 
-**Face Devices:**
-- UIDAI Face RD: `in.gov.uidai.facerd`
+| Vendor | Package |
+|--------|---------|
+| Mantra MFS100 | `com.mantra.rdservice` |
+| Morpho | `com.scl.rdservice` |
+| Precision PB510 | `com.precision.pb510.rdservice` |
+| Startek | `com.acpl.registersdk` |
+| SecuGen | `com.secugen.rdservice` |
+| Tatvik | `com.tatvik.bio.tmf20` |
 
-## Requirements
+**Iris:**
 
-- React Native 0.60 or higher
-- Android SDK 24 or higher
-- RD service app installed on the device
+| Vendor | Package |
+|--------|---------|
+| Mantra MIS100V2 | `com.mantra.mis100v2.rdservice` |
+| IriTech IriShield | `com.iritech.rdservice` |
 
-## Platform Support
+**Face:**
 
-- Android: ✅ Supported
-- iOS: ❌ Not supported (RD services are Android-only)
+| Vendor | Package |
+|--------|---------|
+| UIDAI Face RD | `in.gov.uidai.facerd` |
 
-## Error Handling
+> Package names can change between vendor releases — verify against the RD service app actually installed on your target devices.
 
-The library returns descriptive error messages in the `message` field when `status` is `"FAILURE"`:
+## Error handling
 
-- **"Device not ready"**: The biometric device is not connected or not ready
-- **"Selected device not found"**: The specified RD service package is not installed
-- **"RD services not available"**: The RD service app is not available on the device
-- **"No action taken"**: User cancelled the operation
+Failures resolve (never reject) with `status: 'FAILURE'` and one of:
+
+| Message | Meaning |
+|---------|---------|
+| `Device not ready` | The biometric device is not connected, not initialised, or returned an invalid response |
+| `Selected device not found` | No app with the given package name handles the RD capture intent |
+| `No action taken` | The user cancelled the capture |
+| `Invalid RD service package name` | `deviceName` is not a valid Android package name |
+| `Another RD service request is already in progress` | A previous capture has not finished yet |
+| `No foreground activity available to start RD service` | The app is not in the foreground |
+| `UIDAI RD services are not available on iOS…` | Called on iOS, where RD services do not exist |
+
+## Security notes
+
+Biometric data is highly sensitive. When integrating this library:
+
+- **Never modify the PID XML.** The `message` returned on success is digitally signed by the RD service; altering a single character breaks UIDAI signature verification. This library returns it byte-for-byte as produced.
+- **Never log or persist raw PID data** on the device. Forward it to your backend over TLS and discard it.
+- **The PID block is already encrypted** by the RD service (per UIDAI spec) — your app cannot and should not decrypt it; only the authorised backend/AUA can process it.
+- **Validate the RD service app.** The library only launches explicit intents against a syntactically valid package name, so the capture request cannot be hijacked by an arbitrary app — but you should still pin the exact vendor package(s) you support.
+- **Use `env="PP"` (pre-production) PidOptions during development** and `env="P"` only in production.
+- Comply with the UIDAI Aadhaar Act and data-protection regulations applicable to your deployment.
+
+## Troubleshooting
+
+- **`Selected device not found` on Android 11+**: fixed by this library's built-in `<queries>` declarations — rebuild the app after installing/updating the library.
+- **Capture never returns**: ensure the RD service app is installed, registered, and the device is plugged in; call `getDeviceInfo` first to check readiness.
+- **Works in debug but not release**: confirm your ProGuard/R8 rules don't strip the RD service vendor SDK (this library itself needs no extra rules).
+
+## Contributing
+
+See the [contributing guide](CONTRIBUTING.md) to learn how to contribute to the repository and the development workflow.
 
 ## License
 
 MIT
-
-## Contributing
-
-See the [contributing guide](CONTRIBUTING.md) to learn how to contribute to the repository.
