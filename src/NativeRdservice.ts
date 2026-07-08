@@ -14,6 +14,10 @@ export interface Spec extends TurboModule {
     deviceName: string,
     pidOption: string
   ): Promise<RdServiceResponse>;
+  getIrisCapture(
+    deviceName: string,
+    pidOption: string
+  ): Promise<RdServiceResponse>;
 }
 
 export default TurboModuleRegistry.getEnforcing<Spec>('Rdservice');

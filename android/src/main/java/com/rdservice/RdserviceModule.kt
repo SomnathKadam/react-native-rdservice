@@ -19,6 +19,7 @@ class RdserviceModule(reactContext: ReactApplicationContext) :
     const val RDINFO_CODE = 1
     const val RDCAPTURE_CODE = 2
     const val FACE_CAPTURE_CODE = 9
+    const val IRIS_CAPTURE_CODE = 3
   }
 
   private val SUCCESS = "SUCCESS"
@@ -71,6 +72,19 @@ class RdserviceModule(reactContext: ReactApplicationContext) :
 
         FACE_CAPTURE_CODE -> {
           val captureXML = data.getStringExtra("response")
+
+          if (captureXML == null || captureXML.length <= 10) {
+            resolve(FAILURE, "Device not ready")
+            return
+          }
+          if (captureXML.lowercase().contains("device not ready")) {
+            resolve(FAILURE, "Device not ready")
+            return
+          }
+          resolve(SUCCESS, captureXML)
+        }
+        IRIS_CAPTURE_CODE -> {
+          val captureXML = data.getStringExtra("PID_DATA")
 
           if (captureXML == null || captureXML.length <= 10) {
             resolve(FAILURE, "Device not ready")
@@ -138,6 +152,28 @@ class RdserviceModule(reactContext: ReactApplicationContext) :
     }
   }
 
+  private fun captureIrisData() {
+    var finalPidOption = """<?xml version="1.0"?><PidOptions ver="1.0"><Opts fCount="0" fType="0" iCount="1" iType="0" pCount="0" pType="0" format="0" pidVer="2.0" timeout="10000" posh="UNKNOWN" env="P" /><CustOpts></CustOpts></PidOptions>"""
+
+    if (pidOption.length >= 10) {
+      finalPidOption = pidOption
+    }
+
+    val intent = Intent().apply {
+      action = "in.gov.uidai.rdservice.iris.CAPTURE"
+      putExtra("PID_OPTIONS", finalPidOption)
+      setPackage(pckName)
+    }
+
+    val currentActivity = currentActivity
+    try {
+      currentActivity?.startActivityForResult(intent, IRIS_CAPTURE_CODE)
+    } catch (e: Exception) {
+      e.printStackTrace()
+      resolve(FAILURE, "Selected device not found")
+    }
+  }
+
   override fun getFingerPrint(deviceName: String, pidOption: String, promise: Promise) {
     try {
       this.promise = promise
@@ -162,6 +198,17 @@ class RdserviceModule(reactContext: ReactApplicationContext) :
     }
   }
 
+  override fun getIrisCapture(deviceName: String, pidOption: String, promise: Promise) {
+    try {
+      this.promise = promise
+      this.pckName = deviceName
+      this.pidOption = pidOption
+      captureIrisData()
+    } catch (e: Exception) {
+      e.printStackTrace()
+      resolve(FAILURE, "Iris RD services not available")
+    }
+  }
   private fun parseBioMetricData(bioxml: String): String {
     return bioxml
       .replace("\"", "'")

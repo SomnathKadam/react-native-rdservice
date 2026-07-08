@@ -15,3 +15,10 @@ export function getFaceCapture(
 ): Promise<RdServiceResponse> {
   return Rdservice.getFaceCapture(deviceName, pidOption);
 }
+
+export function getIrisCapture(
+  deviceName: string,
+  pidOption: string
+): Promise<RdServiceResponse> {
+  return Rdservice.getIrisCapture(deviceName, pidOption);
+}
