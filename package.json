@@ -1,6 +1,6 @@
 {
   "name": "react-native-rdservice",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Capture fingerprint, iris and face biometric data using UIDAI RD (Registered Device) services on Android",
   "main": "./lib/module/index.js",
   "types": "./lib/typescript/src/index.d.ts",
